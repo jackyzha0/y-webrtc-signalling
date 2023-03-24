@@ -57,7 +57,6 @@ const onconnection = conn => {
 
   let ttl = getNewExpiry()
   setInterval(() => {
-    console.log(new Date().getTime() > ttl)
     if (new Date().getTime() > ttl) {
       // force close
       conn.close()
