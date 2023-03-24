@@ -9,8 +9,11 @@ const wsReadyStateOpen = 1
 // If you are running this serverless, this should probably be set to false
 const PERSISTENT = false
 
+
 // 1 minute
 const expiryTimeout = 1000 * 60
+// 5 min
+const serverTimeout = 1000 * 60 * 5
 const refreshRate = 1000
 
 const port = process.env.PORT || 4444
@@ -33,6 +36,8 @@ const forceClose = () => {
   server.close()
   process.exit()
 }
+
+setTimeout(forceClose, serverTimeout)
 
 const send = (conn, message) => {
   if (conn.readyState !== wsReadyStateConnecting && conn.readyState !== wsReadyStateOpen) {
