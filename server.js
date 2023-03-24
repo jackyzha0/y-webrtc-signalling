@@ -1,5 +1,6 @@
 import { WebSocketServer } from 'ws'
 import http from 'http'
+import process from 'process'
 
 const wsReadyStateConnecting = 0
 const wsReadyStateOpen = 1
@@ -7,7 +8,10 @@ const wsReadyStateOpen = 1
 // Whether to keep the server alive after all connections have closed
 // If you are running this serverless, this should probably be set to false
 const PERSISTENT = false
-const pingTimeout = 30000
+
+// 1 minute
+const expiryTimeout = 1000 * 60
+const refreshRate = 1000
 
 const port = process.env.PORT || 4444
 const wss = new WebSocketServer({ noServer: true })
@@ -21,11 +25,13 @@ const topics = new Map()
 const connections = new Set()
 
 const forceClose = () => {
+  console.log("Forcing shutdown...")
   for (const conn of connections) {
-    conn.destroy();
-    connections.delete(conn);
+    conn.destroy()
+    connections.delete(conn)
   }
-  server.close(callback);
+  server.close()
+  process.exit()
 }
 
 const send = (conn, message) => {
@@ -39,28 +45,25 @@ const send = (conn, message) => {
   }
 }
 
+function getNewExpiry() {
+  return (new Date()).getTime() + expiryTimeout
+}
+
 const onconnection = conn => {
   connections.add(conn)
+  console.log(`Received connection! Now at ${connections.size} connections`)
   const subscribedTopics = new Set()
   let closed = false
-  // Check if connection is still alive
-  let pongReceived = true
-  const pingInterval = setInterval(() => {
-    if (!pongReceived) {
+
+  let ttl = getNewExpiry()
+  setInterval(() => {
+    console.log(new Date().getTime() > ttl)
+    if (new Date().getTime() > ttl) {
+      // force close
       conn.close()
-      clearInterval(pingInterval)
-    } else {
-      pongReceived = false
-      try {
-        conn.ping()
-      } catch (e) {
-        conn.close()
-      }
     }
-  }, pingTimeout)
-  conn.on('pong', () => {
-    pongReceived = true
-  })
+  }, refreshRate)
+
   conn.on('close', () => {
     subscribedTopics.forEach(topicName => {
       const subs = topics.get(topicName) || new Set()
@@ -71,28 +74,29 @@ const onconnection = conn => {
     })
     subscribedTopics.clear()
     connections.delete(conn)
+    console.log(`Connection closed! Now managing ${connections.size} connections`)
     closed = true
 
     if (!PERSISTENT && connections.size === 0) {
       forceClose()
     }
   })
+
   conn.on('message', message => {
     message = JSON.parse(message.toString())
-    console.log(message)
     if (message && message.type && !closed) {
       const messageTopics = message.topics ?? []
       switch (message.type) {
         case 'subscribe':
           messageTopics.forEach(topicName => {
             if (typeof topicName === 'string') {
-              // add conn to topic
               const topic = topics.get(topicName) ?? new Set()
               topic.add(conn)
               subscribedTopics.add(topicName)
               topics.set(topicName, topic)
             }
           })
+          ttl = getNewExpiry()
           break
         case 'unsubscribe':
           messageTopics.forEach(topicName => {
@@ -101,16 +105,16 @@ const onconnection = conn => {
               subs.delete(conn)
             }
           })
+          ttl = getNewExpiry()
           break
         case 'publish':
           if (message.topic) {
             const receivers = topics.get(message.topic)
             if (receivers) {
-              receivers.forEach(receiver =>
-                send(receiver, message)
-              )
+              receivers.forEach(receiver => send(receiver, message))
             }
           }
+          ttl = getNewExpiry()
           break
         case 'ping':
           send(conn, { type: 'pong' })
@@ -118,8 +122,8 @@ const onconnection = conn => {
     }
   })
 }
-wss.on('connection', onconnection)
 
+wss.on('connection', onconnection)
 
 server.on('upgrade', (request, socket, head) => {
   const handleAuth = ws => {
@@ -129,5 +133,4 @@ server.on('upgrade', (request, socket, head) => {
 })
 
 server.listen(port)
-
-console.log('Signaling server running on localhost:', port)
+console.log('Signalling server running on localhost:', port)
