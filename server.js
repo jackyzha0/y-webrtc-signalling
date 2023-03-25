@@ -15,7 +15,7 @@ const expiryTimeout = 1000 * 60
 const serverTimeout = 1000 * 60 * 5
 const refreshRate = 1000
 
-const port = process.env.PORT || 4000
+const port = process.env.PORT || 8080
 
 const server = http.createServer((_, response) => {
   response.writeHead(200, { 'Content-Type': 'text/plain' })
@@ -132,6 +132,6 @@ server.on('upgrade', (request, socket, head) => {
   wss.handleUpgrade(request, socket, head, handleAuth)
 })
 
-server.listen(port, "127.0.0.1", () => {
+server.listen(port, () => {
   console.log('Signalling server running on localhost:', port)
 })
