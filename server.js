@@ -16,12 +16,12 @@ const serverTimeout = 1000 * 60 * 5
 const refreshRate = 1000
 
 const port = process.env.PORT || 4000
-const wss = new WebSocketServer({ noServer: true })
 
 const server = http.createServer((_, response) => {
   response.writeHead(200, { 'Content-Type': 'text/plain' })
   response.end('okay')
 })
+const wss = new WebSocketServer({ server })
 
 const topics = new Map()
 const connections = new Set()
@@ -132,5 +132,6 @@ server.on('upgrade', (request, socket, head) => {
   wss.handleUpgrade(request, socket, head, handleAuth)
 })
 
-server.listen(port, "127.0.0.1")
-console.log('Signalling server running on localhost:', port)
+server.listen(port, "127.0.0.1", () => {
+  console.log('Signalling server running on localhost:', port)
+})
