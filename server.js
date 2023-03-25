@@ -7,8 +7,7 @@ const wsReadyStateOpen = 1
 
 // Whether to keep the server alive after all connections have closed
 // If you are running this serverless, this should probably be set to false
-const PERSISTENT = false
-
+const PERSISTENT = true
 
 // 1 minute
 const expiryTimeout = 1000 * 60
@@ -29,15 +28,12 @@ const connections = new Set()
 
 const forceClose = () => {
   console.log("Forcing shutdown...")
-  for (const conn of connections) {
-    conn.destroy()
-    connections.delete(conn)
-  }
-  server.close()
   process.exit()
 }
 
-setTimeout(forceClose, serverTimeout)
+if (!PERSISTENT) {
+  setTimeout(forceClose, serverTimeout)
+}
 
 const send = (conn, message) => {
   if (conn.readyState !== wsReadyStateConnecting && conn.readyState !== wsReadyStateOpen) {
