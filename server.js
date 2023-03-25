@@ -15,7 +15,7 @@ const expiryTimeout = 1000 * 60
 const serverTimeout = 1000 * 60 * 5
 const refreshRate = 1000
 
-const port = process.env.PORT || 4444
+const port = process.env.PORT || 433
 const wss = new WebSocketServer({ noServer: true })
 
 const server = http.createServer((_, response) => {
