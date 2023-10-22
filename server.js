@@ -16,7 +16,7 @@ const expiryTimeout = 1000 * 60
 const serverTimeout = 1000 * 60 * 5
 const refreshRate = 1000
 
-const port = process.env.PORT || 8080
+const port = process.env.port || 8080
 
 const server = http.createServer((_, response) => {
   response.writeHead(200, { 'Content-Type': 'text/plain' })
