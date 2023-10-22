@@ -126,13 +126,6 @@ const onconnection = conn => {
 
 wss.on('connection', onconnection)
 
-server.on('upgrade', (request, socket, head) => {
-  const handleAuth = ws => {
-    wss.emit('connection', ws, request)
-  }
-  wss.handleUpgrade(request, socket, head, handleAuth)
-})
-
 server.listen(port, () => {
   console.log('Signalling server running on localhost:', port)
 })
