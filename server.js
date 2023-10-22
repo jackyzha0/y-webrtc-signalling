@@ -11,6 +11,7 @@ const PERSISTENT = true
 
 // 1 minute
 const expiryTimeout = 1000 * 60
+
 // 5 min
 const serverTimeout = 1000 * 60 * 5
 const refreshRate = 1000
