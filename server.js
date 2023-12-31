@@ -5,15 +5,10 @@ import process from 'process'
 const wsReadyStateConnecting = 0
 const wsReadyStateOpen = 1
 
-// Whether to keep the server alive after all connections have closed
-// If you are running this serverless, this should probably be set to false
-const PERSISTENT = true
-
 // 1 minute
 const expiryTimeout = 1000 * 60
 
 // 5 min
-const serverTimeout = 1000 * 60 * 5
 const refreshRate = 1000
 
 const port = process.env.port || 8080
@@ -22,19 +17,10 @@ const server = http.createServer((_, response) => {
   response.writeHead(200, { 'Content-Type': 'text/plain' })
   response.end('okay')
 })
-const wss = new WebSocketServer({ server })
 
+const wss = new WebSocketServer({ server })
 const topics = new Map()
 const connections = new Set()
-
-const forceClose = () => {
-  console.log("Forcing shutdown...")
-  process.exit()
-}
-
-if (!PERSISTENT) {
-  setTimeout(forceClose, serverTimeout)
-}
 
 const send = (conn, message) => {
   if (conn.readyState !== wsReadyStateConnecting && conn.readyState !== wsReadyStateOpen) {
@@ -58,14 +44,14 @@ const onconnection = conn => {
   let closed = false
 
   let ttl = getNewExpiry()
-  setInterval(() => {
+  const ttlCheckTimer = setInterval(() => {
     if (new Date().getTime() > ttl) {
       // force close
       conn.close()
     }
   }, refreshRate)
 
-  conn.on('close', () => {
+  function cleanupconn() {
     subscribedTopics.forEach(topicName => {
       const subs = topics.get(topicName) || new Set()
       subs.delete(conn)
@@ -75,15 +61,14 @@ const onconnection = conn => {
     })
     subscribedTopics.clear()
     connections.delete(conn)
+    conn.onmessage = () => {}
+    clearInterval(ttlCheckTimer)
     console.log(`Connection closed! Now managing ${connections.size} connections`)
     closed = true
+  }
 
-    if (!PERSISTENT && connections.size === 0) {
-      forceClose()
-    }
-  })
-
-  conn.on('message', message => {
+  conn.onclose = cleanupconn
+  conn.onmessage = message => {
     message = JSON.parse(message.toString())
     if (message && message.type && !closed) {
       const messageTopics = message.topics ?? []
@@ -121,7 +106,7 @@ const onconnection = conn => {
           send(conn, { type: 'pong' })
       }
     }
-  })
+  }
 }
 
 wss.on('connection', onconnection)
