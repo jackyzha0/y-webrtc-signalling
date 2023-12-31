@@ -69,7 +69,7 @@ const onconnection = conn => {
 
   conn.onclose = cleanupconn
   conn.onmessage = message => {
-    message = JSON.parse(message.toString())
+    message = JSON.parse(message.data.toString())
     if (message && message.type && !closed) {
       const messageTopics = message.topics ?? []
       switch (message.type) {
